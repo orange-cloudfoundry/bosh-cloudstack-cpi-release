@@ -1,0 +1,48 @@
+#!/bin/bash
+
+JOB_DIR=/var/vcap/jobs/cpi
+RUN_DIR=/var/vcap/sys/run/cpi
+LIB_DIR=$JOB_DIR/lib
+
+export PIDFILE=$RUN_DIR/cpi-core.pid
+
+source /var/vcap/packages/cpi-common/utils.sh
+
+case $1 in
+
+start)
+#pid file creation done with spring boot (uses PIDFILE env var)
+#pid_guard $PIDFILE "cpi-core"
+
+mkdir -p $RUN_DIR
+
+export JAVA_HOME=/var/vcap/packages/cpi-java
+
+
+cd $JOB_DIR
+# exec $JAVA_HOME/bin/java -XX:OnOutOfMemoryError="/var/vcap/bosh/bin/monit restart cpi" \
+# -server -XX:+UseG1GC -XX:MinHeapFreeRatio=5 -XX:MaxHeapFreeRatio=25 -Xms128M -Xmx<%= p('cpi.heap_size') %> \
+# -jar /var/vcap/packages/cpi-core/cloudstack-cpi-core.jar
+
+exec $JAVA_HOME/bin/java  \
+-server -XX:+UseG1GC -XX:MinHeapFreeRatio=5 -XX:MaxHeapFreeRatio=25 -Xms128M -Xmx<%= p('cpi.heap_size') %> -Dlogback.configurationFile=$JOB_DIR/config/logback.xml \
+-jar /var/vcap/packages/cpi-core/cloudstack-cpi-core.jar
+
+
+
+;;
+
+stop)
+#kill_and_wait $PIDFILE
+kill -SIGTERM `cat $PIDFILE`
+
+
+;;
+
+*)
+echo "Usage: cpi-core {start|stop}"
+
+;;
+
+esac
+exit 0

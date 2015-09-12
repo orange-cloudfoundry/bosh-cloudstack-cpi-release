@@ -1,79 +1,159 @@
 ---
 name: cpi
 templates:
+  cpi-core.erb: bin/cpi-core
   cpi.erb: bin/cpi
   application.yml.erb: config/application.yml
+  logback.xml.erb: config/logback.xml
+  
 packages:
 - cpi-common
 - cpi-java
-- cpi
+- cpi-core
 
 properties:
-  nats.user:
-    description: The user used to connect to the NATS server.
-  nats.password:
-    description: The password used to connect to the NATS server.
-  nats.machines:
-    description: The list of hosts running NATS server.
-  nats.port:
-    description: The port used to connect to the NATS server.
-
-  cpi.f5.url:
-    description: The HTTPS URL of the target F5 LTM.
-  cpi.f5.user:
-    description: The user used to authenticate against the LTM.
-  cpi.f5.password:
-    description: The password used to authenticate against the LTM.
-  cpi.f5.poolNamePrefix:
+  # CloudStack CPI configuration
+  cloudstack.endpoint:
     description:
-      The text used to prefix the name of the pools managed by cpi.
-    default: _pool_cf_
-  cpi.f5.iRuleNamePrefix:
+      cloudstack api endpoint 
+  cloudstack.api_key:
     description:
-      The text used to prefix the name of the iRules managed by cpi.
-    default: _rule_cf_
-  cpi.f5.loggingPoolName:
+      cloudstack api key
+  cloudstack.secret_access_key:
     description:
-      The pool used for HSL logging to forwards access logs and metrics to
-      Loggregator. The pool members of this pool get populated automatically by
-      cpi.
-    default: _cf_logging_pool
-  cpi.f5.loggingPort:
+      cloudstack api secret
+  cloudstack.default_key_name:
     description:
-      The port cpi listens on for receiving access logs and metrics from
-      the LTM. These logs and metrics get forwarded to Metron.
-    default: 2015
-  cpi.f5.ltmId:
+      key name for ssh access (unused)
+  cloudstack.private_key:
     description:
-      The 'index' of the LTM used in Loggregator messages. (i.e. Access logs
-      show up with [RTR/ltmId] as the source.)
-    default: f5.ltmId
-  cpi.f5.skipTlsVerification:
+      private key for ssh access (unused)
+  cloudstack.state_timeout:
     description:
-      Indicates of TLS verification should be skipped when calling the LTM
-      REST API.
+      cloudstack api timeout
+    default: 1200
+  cloudstack.state_timeout_volume:
+    description:
+      cloudstack volume api timout
+    default: 1200
+  cloudstack.stemcell_public_visibility:
+    description:
+      must stemcell template be public ?
     default: true
-
-  # Router Virtual Server
-  cpi.f5.routerVirtualServer.name:
-    description: The name of the Virtual Server on the LTM.
-  cpi.f5.routerVirtualServer.destination:
-    description: The socket address of the virtual server (i.e. 10.1.2.3:80)
-  cpi.f5.routerVirtualServer.description:
-    description: The value of the Virtual Server's description field.
-    default: Cloud Foundry cpi Virtual Server -- Automatically created by cpi.
-  cpi.f5.routerVirtualServer.source:
-    description: The source field of the virtual server.
-    default: 0.0.0.0/0
-  cpi.f5.routerVirtualServer.rules:
-    description: A list of custom iRules used by the virtual server.
-
+  cloudstack.default_zone:
+    description:
+      CloudStack Iaas ZONE to use
+  cloudstack.proxy_host:
+    description:
+      host to the proxy e.g. 192.168.1.1. Usefull to reach cloudstack api behind proxy. No proxy if no set
+    default: "" 
+  cloudstack.proxy_port:
+    description:
+      port to the proxy
+    default: 8080
+  cloudstack.proxy_user:
+    description:
+      user to authent on the proxy
+  cloudstack.proxy_password:
+    description:
+      password to authent on the proxy
   cpi.heap_size:
-    description: The Java heap size of the cpi.
-    default: "300m"
-
+    description:
+      cpi jvm sizing
+    default : 512M      
+  cpi.host:
+    description:
+      host the cpi-core rest server is listening on. use full for debugging rest server out of bosh deployment
+    default : 127.0.0.1
   cpi.port:
     description:
-      The HTTP port used by the cpi for /varz, /healthz, and maybe some
-      REST endpoints.
-    default: 6080
+      port the cpi core rest server is listening on
+    default : 8080      
+  cpi.webdav_host:
+    description:
+      webdav server to offer template to cloudstack api. Should be set to bosh server ip address
+    default : 127.0.0.1
+  cpi.webdav_port:
+    description:
+      webdav port to offer template to cloudstack api
+    default : 8080
+  cpi.webdav_directory:
+    description:
+      webdav filesystem dir. defaults to persistent disk location
+    default : /var/vcap/store/cpi/webdav
+  cpi.mock_create_stemcell:
+    description:
+      Should the CPI use a mock predefined stemcell (use full for troubleshooting / dev)
+    default: false
+  cpi.existing_template_name:
+    description:
+      The cloudstack template name the CPI should use, if mock mode is true
+    default: "bosh-stemcell-3033-po4.vhd.bz2"
+    
+  cpi.default_disk_offering:
+    description:
+      default disk offering to use if not specified (ie not disk_pool, just persistent tag
+    
+  cpi.default_ephemeral_disk_offering:
+    description:
+      default disk offering to use if not specified (ie not disk_pool, just persistent tag
+  
+  cpi.vm_expunge_delay:
+    description:
+      delay (in seconds) the cpi will wait after vm deletion. Should match cloudstack expunge delay to prevent ip reuse conflicts
+    default: 30
+  
+  
+  
+  
+  cpi.registry.endpoint:
+    description:
+      host the bosh registry is listening on. must be the IP of the director to be reached from bosh agents
+    default : http://127.0.0.1:8080
+  cpi.registry.user:
+    description:
+      user for bosh registry
+    default : admin
+  cpi.registry.password:
+    description:
+      password for bosh registry
+    default: admin
+    
+  cpi.blobstore.provider:
+    description: 
+      local for micro bosh and bosh-init or dav provider for full bosh
+    default: local
+    
+  cpi.blobstore.path:
+    description:
+      path for local provider
+    default: /var/vcap/micro_bosh/data/cache
+
+  cpi.blobstore.address:
+    description:
+      ip of blobstore
+    default: 0.0.0.0
+
+  cpi.blobstore.port:
+    description:
+      port of blobstore
+    default: 0
+
+  cpi.blobstore.agent.user:
+    description:
+      agent user for blobstore
+    default: agent
+
+  cpi.blobstore.agent.password:
+    description:
+      password user for blobstore
+    default: agent-password
+
+  cpi.ntp:
+    description:
+      "ntp server list (same as director) eg : [10.234.50.245 ,10.234.50.246]"
+
+  cpi.agent.mbus:
+    description:
+      "director nats url eg : nats://nats:nats-password@10.234.228.157:4222 "  
+    

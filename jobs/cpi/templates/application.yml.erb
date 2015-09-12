@@ -1,18 +1,59 @@
 ---
 
 cloudstack:
-  endpoint: <%= p('cloustack.endpoint') %>
-  api_key: <%= p('cloustack.api_key') %>
-  secret_access_key: <%= p('cloustack.secret_access_key') %>
-  default_key_name: <%= p('cloustack.default_key_name') %>
-  private_key: <%= p('cloustack.private_key') %>
-  state_timeout: <%= p('cloustack.state_timeout') %>
-  state_timeout_volume: <%= p('cloustack.state_timeout_volume') %>
-  stemcell_public_visibility:<%= p('cloustack.stemcell_public_visibility') %>
-  default_zone: <%= p('cloustack.default_zone') %>
+  endpoint: <%= p('cloudstack.endpoint') %>
+  api_key: <%= p('cloudstack.api_key') %>
+  secret_access_key: <%= p('cloudstack.secret_access_key') %>
+  default_key_name: <%= p('cloudstack.default_key_name') %>
+  private_key: <%= p('cloudstack.private_key') %>
+  state_timeout: <%= p('cloudstack.state_timeout') %>
+  state_timeout_volume: <%= p('cloudstack.state_timeout_volume') %>
+  stemcell_public_visibility: <%= p('cloudstack.stemcell_public_visibility') %>
+  default_zone: <%= p('cloudstack.default_zone') %>
+  proxy_host: <%= p('cloudstack.proxy_host') %>
+  proxy_port: <%= p('cloudstack.proxy_port') %>
+  proxy_user: <%= p('cloudstack.proxy_user') %>
+  proxy_password: <%= p('cloudstack.proxy_password') %>
+
+cpi:
+  mock_create_stemcell: <%= p('cpi.mock_create_stemcell') %>  
+  existing_template_name: <%= p('cpi.existing_template_name') %>
+  webdav_host: <%= p('cpi.webdav_host') %>
+  webdav_port: <%= p('cpi.webdav_port') %>
+  webdav_directory: <%= p('cpi.webdav_directory') %>
+  default_disk_offering: <%= p('cpi.default_disk_offering') %>    
+  default_ephemeral_disk_offering: <%= p('cpi.default_ephemeral_disk_offering') %>
+  vm_expunge_delay: <%= p('cpi.vm_expunge_delay') %>
+
+  registry:
+    endpoint: <%= p('cpi.registry.endpoint') %>
+    user: <%= p('cpi.registry.user') %>
+    password: <%= p('cpi.registry.password') %>
+
+  blobstore:
+    provider: <%= p('cpi.blobstore.provider') %>
+    path: <%= p('cpi.blobstore.path') %>
+    address: <%= p('cpi.blobstore.address') %>
+    port: <%= p('cpi.blobstore.port') %>
+    options:
+      user: <%= p('cpi.blobstore.agent.user') %>
+      password: <%= p('cpi.blobstore.agent.password') %>
+  
+  agent:
+    mbus: <%= p('cpi.agent.mbus') %>
+  ntp: <%= p('cpi.ntp') %>   
 
 logging:
   level: DEBUG
+
+spring:
+  main:
+    show-banner: false
+  datasource:
+    url:  jdbc:hsqldb:file:/var/vcap/store/cpi/db
+  jpa:
+    hibernate:
+      ddl-auto: update
 
 
 pidfile: /var/vcap/sys/run/cpi/cpi.pid
