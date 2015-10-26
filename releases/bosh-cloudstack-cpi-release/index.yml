@@ -2,4 +2,12 @@
 builds:
   36f38406-8a14-4faf-b7d1-005dac359ac1:
     version: '1'
+  597d5985-83f1-4695-b2de-628c01b3c68f:
+    version: '2'
+  b74e0d10-1a18-4454-874e-817a2d545ff6:
+    version: '3'
+  b231e58f-c482-4454-b163-d33ea343036a:
+    version: '4'
+  1c2ed2e7-035d-4900-a1f9-b1901f80e216:
+    version: '5'
 format-version: '2'

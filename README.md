@@ -4,7 +4,8 @@
 
 # bosh-cloudstack-cpi-release
 
-This is work in progress / feedbacks welcome (use issues).
+This is work in progress / feedbacks welcome (use issues). Tested on cloudstack 4.3, xen 6.2
+The cloudstack cpi is available on [bosh.io](http://bosh.io/releases/github.com/cloudfoundry-community/bosh-cloudstack-cpi-release) 
 
 
 ## Design :
@@ -15,7 +16,29 @@ This is work in progress / feedbacks welcome (use issues).
 * secondary / ephemeral implemented as cloudstack volume (no ephemeral disk concept in CloudStack).
 * Uses a webdav http server to enable stemcell / template loading by cloudstack (other option was create volume and transform to template, required bosh / bosh-init to be hosted in the target cloud / tenant). This webdav server is started from the spring boot cpi core jvm
 
-* Out of Scope : security groups provisioning / CS Basic Zones
+
+![Alt text](http://g.gravizo.com/g?
+  digraph G {
+    aize ="4,4";
+    bosh_director -> cpi
+	cpi -> cpi_core
+	cpi_core -> bosh_registry
+	cpi_core -> cloudstack
+	cpi_core -> template_webdav_server
+  }
+)
+
+* detailed diagram sequence
+
+![Alt text](http://plantuml.com:80/plantuml/png/ZLJ1Rjim33rFNq5arsGVq203jhGOYdReq6Mx1hB4s6fiIP1a9_txKNAon8hJzcZoaNnyV79XzZ2vlN--MwwUdYVia-KkAA4irm6aSYY2SGorXCBiMH71or_t4_ZygCegVAzR79O8gou2Qs4SCe3pS65yjNPOAX_SQvRROI5vbmrzVFfp-tlrRVcGSHIrQQKFN6o7ySwPDc16_U_FwyoxPlYT6F8ITVZVWoqMu0Cs0kiQ5Wjsr0TcN-EUS0F28G-uFe9OZFR99C8ueayHh5-SGBYtnYCGnjQ47e1E2nEmLn3T6VIKFkzOXM3Xnztg0prtN0NOc5DFciBbQzg-QqW84-XetBwfGDVCHvPtw9CZCjGuZnuJHtBIl_NePf87FgmO-8YADeWo1U4Od6UI78n1s59rcFh2eUyGrn34EjCfhuo6I9MBeBgU4wFqSNmo2O5xSNfjb0PP2Jiblv2dV0BE4d3Epeg6V32Sw4oprRYKf9xFg_FzgOS_Ev7I6pC5PQayLYSbfVBRYpvfMxgbqHjLjgIjnh0pRXlvqvEW5gCLZMdfAtPDJuTqGbjXWuxNQSuykSQYyz6cwPVYjsyQ9m9ovrmaHmnpyekfsmRp0JV00y6gA_spv5LxjLR66McBce9NoVGDnyWCBACvdKkOfY49fmFz4vLtRtqW9C5Z24gNNrwyqHyuL3fLTXR6_W40)
+
+<!-- source of the diag into sequence.txt -->
+		
+
+
+* Out of Scope : security groups provisioning / CS Basic Zones, see issues for current limitations
+
+
 
 ## Current Status:
 
@@ -24,31 +47,13 @@ This is work in progress / feedbacks welcome (use issues).
 ### Global status
 * micro-bosh creation (with an externally launched cpi-core process)
 * compilation vms ok, blobstore ok
-* bosh-master creation from micro-bosh
-* concourse creation from bosh-master
-	
-### Issues
-* local storage issues (persistent disks happen to not be on the same host as vm when reconfiguring a deployment)
-* ip conflicts when recreating vm, due to cloudstack expunge delay (orig vm is destroyed but ip not yet releases)
-* disk / mount issues (probably related to vm expunge delay)
-* stemcell agent.json user data url is hardcoded. must find a way to find the correct cloudstack userdata url on the fly
-* stemcell : cant get keys from cloudstack metadata (requires stemcell code change to match cloudstack)
-* no support for vip / floating ip yet	
-
+* cpi able to manage most director operation on cloudstack advanced deployment
+* see issues for limitations
 
 ## TODO
 
 * run Director BATS against the cpi
 	https://github.com/cloudfoundry/bosh/blob/master/docs/running_tests.md
-
-* expunge vm
-	required with static ip vms (ip not freed until vm is expunged)
-	default value expunge.delay = 300 (5 mins)
-	option 1
-		reduce to 30s as cloudstack admin => need to restart management server 
-		wait 30s in CPI after vm delete
-	option2
-		expunge with cloudstack API. option not avail in jclouds 1.9, use escaping mechanism to add the expunge flag?
 * check template publication
 	from cpi-core webdav, only public template possible ?
 	validate publication state (instant OK for registering, need to wait for the ssvm (secondary storage vm) to copy the template
@@ -62,25 +67,13 @@ This is work in progress / feedbacks welcome (use issues).
 	static API assigned through API deployVirtualMachine	
 
 * persist bosh registry.
-	now hsqldb
-	set persistent file in /var/vcap/store/cpi
+	now hsqldb, persistent file in /var/vcap/store/cpi
 	TBC : use bosh postgres db (add postgres jdbc driver + dialect config + bosh *db credentials injection)
-
-
-* globals
-	harden Exception mangement
-	map spring boot /error to an intelligible CPI rest payload / stdout
-	update json reference files for unit tests
-
-	
-
 * provision ssh keys
-	generate keypair with cloudstack API (no support on portail)
-	use keypair name + private key in bosh.yml
-	see [cloudstack-keypair](http://cloudstack-administration.readthedocs.org/en/latest/virtual_machines.html?highlight=ssh%20keypair)
-	see [cloudstack-template](http://chriskleban-internet.blogspot.fr/2012/03/build-cloud-cloudstack-instance.html)
-
-
+** generate keypair with cloudstack API (no support on portail)
+** use keypair name + private key in bosh.yml
+** see [cloudstack-keypair](http://cloudstack-administration.readthedocs.org/en/latest/virtual_machines.html?highlight=ssh%20keypair)
+** see [cloudstack-template](http://chriskleban-internet.blogspot.fr/2012/03/build-cloud-cloudstack-instance.html)
 
 
 ## Typical bosh.yml configuration to activate the CloudStack external CPI
@@ -89,7 +82,7 @@ This is work in progress / feedbacks welcome (use issues).
 
 # add the cpi bosh release
 releases:
-- {name: bosh, version: "185"}
+- {name: bosh, version: "215"}
 - {name:  bosh-cloudstack-cpi, version: latest}
 
 # add the template for cpi-core rest server
@@ -160,7 +153,7 @@ disk_pools:
 resource_pools:
 - name: vms
   stemcell:
-    name: bosh-cloudstack-xeb-ubuntu-trusty-go_agent-raw
+    name: bosh-cloudstack-xen-ubuntu-trusty-go_agent-raw
     version: latest
   network: private
   size: 1
@@ -220,13 +213,13 @@ Here are some ways *you* can contribute:
 * by writing specifications
 * by writing code (**no patch is too small**: fix typos, add comments, clean up inconsistent whitespace)
 * by refactoring code
-* by closing [issues](https://github.com/cf-platform-eng/cf-containers-broker/issues)
+* by closing [issues](https://github.com/cloudfoundry-community/bosh-cloudstack-cpi-release/issues)
 * by reviewing patches
 
 
 ### Submitting an Issue
 
-We use the [GitHub issue tracker](https://github.com/cf-platform-eng/cf-containers-broker/issues) to track bugs and
+We use the [GitHub issue tracker](https://github.com/cloudfoundry-community/bosh-cloudstack-cpi-release/issues) to track bugs and
 features. Before submitting a bug report or feature request, check to make sure it hasn't already been submitted. You
 can indicate support for an existing issue by voting it up. When submitting a bug report, please include a
 [Gist](http://gist.github.com/) that includes a stack trace and any details that may be necessary to reproduce the bug,
