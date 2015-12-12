@@ -1,5 +1,5 @@
 ---
-name: cpi
+name: cloudstack_cpi
 templates:
   cpi-core.erb: bin/cpi-core
   cpi.erb: bin/cpi
@@ -80,15 +80,7 @@ properties:
   cpi.webdav_directory:
     description:
       webdav filesystem dir. defaults to persistent disk location
-    default : /var/vcap/store/cpi/webdav
-  cpi.mock_create_stemcell:
-    description:
-      Should the CPI use a mock predefined stemcell (use full for troubleshooting / dev)
-    default: false
-  cpi.existing_template_name:
-    description:
-      The cloudstack template name the CPI should use, if mock mode is true
-    default: "bosh-stemcell-3033-po4.vhd.bz2"
+    default : /var/vcap/store/cloudstack_cpi/webdav
     
   cpi.default_disk_offering:
     description:
