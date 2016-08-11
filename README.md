@@ -1,20 +1,25 @@
 [![Build Status](https://travis-ci.org/cloudfoundry-community/bosh-cloudstack-cpi-release.png)](https://travis-ci.org/cloudfoundry-community/bosh-cloudstack-cpi-release)
 
-
+[![Dependency Status](https://www.versioneye.com/user/projects/5721c9effcd19a00415b2a18/badge.svg?style=flat)](https://www.versioneye.com/user/projects/5721c9effcd19a00415b2a18)
 
 # bosh-cloudstack-cpi-release
 
-This is work in progress / feedbacks welcome (use issues). Tested on cloudstack 4.3, xen 6.2
-The cloudstack cpi is available on [bosh.io](http://bosh.io/releases/github.com/cloudfoundry-community/bosh-cloudstack-cpi-release) 
+This is now quite a stable CPI. Feedbacks welcome (use issues).
+The cloudstack cpi is available on [bosh.io](http://bosh.io/releases/github.com/cloudfoundry-community/bosh-cloudstack-cpi-release)
+The cpi has been presented in [CF Summit Berlin 2015](https://cfsummiteu2015.sched.org/event/1d53a0b4ad41b494234eb86ed80fe295) 
+
 
 
 ## Design :
 * this CPI is a Bosh external CPI i.e a dedicated bosh release wich must be deployed alongside a bosh release OR configured with bosh release in a bosh-init yml manifest
-*  CPI business logic is in a dedicated spring boot app, included in bosh-cloudstack-cpi-release, called cpi-core. This java component has a dedicated template / monit service.
+*  CPI business logic is in a dedicated Spring Boot app, included in bosh-cloudstack-cpi-release, called cpi-core. This java component has a dedicated template / monit service.
 * leverages Apache Jclouds support for CloudStack, nice java adapter for Cloudstack API
 * supports Cloudstack advanced zone
 * secondary / ephemeral implemented as cloudstack volume (no ephemeral disk concept in CloudStack).
 * Uses a webdav http server to enable stemcell / template loading by cloudstack (other option was create volume and transform to template, required bosh / bosh-init to be hosted in the target cloud / tenant). This webdav server is started from the spring boot cpi core jvm
+* leverages Spring Cloud Hystrix to control the iaas flow (timeout, limit concurrent access, circuit breaker)
+* leverages Spring Cache / ehcache, for "static" cloudstack inventory api access
+* offers an optional zipkin/spring cloud sleuth http connector
 
 
 ![Alt text](http://g.gravizo.com/g?
@@ -36,7 +41,7 @@ The cloudstack cpi is available on [bosh.io](http://bosh.io/releases/github.com/
 		
 
 
-* Out of Scope : security groups provisioning / CS Basic Zones, see issues for current limitations
+* Out of Scope : security groups provisioning / CS Basic Zones, Cloudstack VPC, see issues for current limitations
 
 
 
@@ -45,34 +50,16 @@ The cloudstack cpi is available on [bosh.io](http://bosh.io/releases/github.com/
 
 
 ### Global status
-* micro-bosh creation (with an externally launched cpi-core process)
-* compilation vms ok, blobstore ok
+* validated on cloudstack 4.7, xen 6.5 with stemcell 3262
+* bosh-init / micro-bosh creation (with an externally launched cpi-core process)
 * cpi able to manage most director operation on cloudstack advanced deployment
-* see issues for limitations
-
-## TODO
-
-* run Director BATS against the cpi
-	https://github.com/cloudfoundry/bosh/blob/master/docs/running_tests.md
-* check template publication
-	from cpi-core webdav, only public template possible ?
-	validate publication state (instant OK for registering, need to wait for the ssvm (secondary storage vm) to copy the template
-	connectivity issue when cloudstack tries asynchronously to copy template : vlan opened, dedicated chunk encoding compatible spring boot endpoint
-
-	add a garbarge collection mechanism to the webdav server (remove old templates when consumed by cloudstack)	
-
 * use isolated / dedicated networks for bosh vms [avanced-network](http://www.shapeblue.com/using-the-api-for-advanced-network-management)
-	/
-	static API assigned through API deployVirtualMachine	
-
-* persist bosh registry.
-	now hsqldb, persistent file in /var/vcap/store/cpi
-	TBC : use bosh postgres db (add postgres jdbc driver + dialect config + bosh *db credentials injection)
 * provision ssh keys
-** generate keypair with cloudstack API (no support on portail)
-** use keypair name + private key in bosh.yml
-** see [cloudstack-keypair](http://cloudstack-administration.readthedocs.org/en/latest/virtual_machines.html?highlight=ssh%20keypair)
-** see [cloudstack-template](http://chriskleban-internet.blogspot.fr/2012/03/build-cloud-cloudstack-instance.html)
+    generate keypair with cloudstack API (no support on portail)
+    use keypair name + private key in bosh.yml
+    see [cloudstack-keypair](http://cloudstack-administration.readthedocs.org/en/latest/virtual_machines.html?highlight=ssh%20keypair)
+    see [cloudstack-template](http://chriskleban-internet.blogspot.fr/2012/03/build-cloud-cloudstack-instance.html)
+
 
 
 ## Typical bosh.yml configuration to activate the CloudStack external CPI
@@ -81,7 +68,7 @@ The cloudstack cpi is available on [bosh.io](http://bosh.io/releases/github.com/
 
 # add the cpi bosh release
 releases:
-- {name: bosh, version: "222"}
+- {name: bosh, version: latest}
 - {name:  bosh-cloudstack-cpi, version: latest}
 
 # add the template for cpi-core rest server
@@ -89,12 +76,13 @@ jobs:
 - name: bosh_apidata
   templates:
   - {name: nats, release: bosh}
-  - {name: redis, release: bosh}
+  # - {name: redis, release: bosh}  #<-- redis no more required on recent bosh version 256+
   - {name: postgres, release: bosh}
   - {name: blobstore, release: bosh}
   - {name: director, release: bosh}
   - {name: health_monitor, release: bosh}
   - {name: powerdns, release: bosh}
+  # - {name: registry, release: bosh}   #<-- registry. commented, cpi brings it own registry  
   - {name: cloudstack_cpi, release: bosh-cloudstack-cpi} # <-- add the external CPI
 
 
@@ -123,7 +111,8 @@ properties:
         webdav_host: *bosh_static_ip
         default_disk_offering: "DO1 - Small STD" 
         default_ephemeral_disk_offering: "DO1 - Small STD"
-        vm_expunge_delay: 40 # <-- set to 40s. default is 30s after vm delete.  
+        vm_expunge_delay: 40 # <-- set to 40s. default is 30s after vm delete.
+        force_expunge: true  
 	
 	    registry:
 	      endpoint: http://<bosh_ip>:8080
@@ -135,7 +124,7 @@ properties:
 	        agent: {user: agent, password: agent-password}
 	    agent:
 	      mbus: "nats://nats:nats-password@<bosh_ip>:4222"
-	    ntp: ""
+	    ntp:  [10.1.1.1 ,10.1.1.2]
        
       
       
@@ -150,14 +139,14 @@ disk_pools:
 resource_pools:
 - name: vms
   stemcell:
-    name: bosh-cloudstack-xen-ubuntu-trusty-go_agent-raw
+    name: bosh-cloudstack-xen-ubuntu-trusty-go_agent
     version: latest
   network: private
   size: 1
   cloud_properties:
-    compute_offering: "CO1 - Small STD" #<--- Replace with your compute offering name
+    compute_offering: "m1.small" #<--- Replace with your compute offering name
     disk: 20000
-    ephemeral_disk_offering : "DO2 - Medium STD" #<--- Replace with the disk offering u want for ephemeral disk
+    ephemeral_disk_offering : "Data disk" #<--- Replace with the disk offering u want for ephemeral disk
       
       
 ```
@@ -191,31 +180,30 @@ name: micro-bosh
 releases:
 
 - name: bosh
-  url: https://bosh.io/d/github.com/cloudfoundry/bosh?v=215
-  sha1: f86d4cec1baff641287e069619d7ed4dfa578b13
+  url: https://bosh.io/d/github.com/cloudfoundry/bosh?v=257.1
+  sha1: 94e2514f59a6ff290ae35de067a966ba779688d7
 
 - name: bosh-cloudstack-cpi-release
-  url:  http://localhost:8080/webdav/bosh-cloudstack-cpi-release-5+dev.12.tgz
-  sha1: 9f187f69849cf38f72cb389dee96504f57e03f9a
+  url: https://bosh.io/d/github.com/cloudfoundry-community/bosh-cloudstack-cpi-release?v=12
+  sha1: 9438a7d28791b68efe5fbcfbb8a3e298e5798912
 
 resource_pools:
 - name: vms    
   network: private
   stemcell:
-    url:  http://localhost:8080/webdav/light-bosh-stemcell-3033-cloudstack-xen-ubuntu-trusty-go_agent.tgz
+    url:  https://orange-candidate-cloudstack-xen-stemcell.s3.amazonaws.com/bosh-stemcell/cloudstack/bosh-stemcell-3262.3-cloudstack-xen-ubuntu-trusty-go_agent.tgz
     sha1: cf6f6925d133d0b579d154694025c027bc64ef88
 
   cloud_properties:                                                                                              
-    compute_offering: "CO2 - Medium STD" # <--- Replace with compute offering name                                                                          
+    compute_offering: "m1.small" # <--- Replace with compute offering name                                                                          
     disk: 20_000                                                                                                 
-    ephemeral_disk_offering: custom_size_disk_offering2                                                          
+    ephemeral_disk_offering: "Data disk"                                                          
 
 disk_pools:
 - name: disks
   disk_size: 10000 
   cloud_properties:
-    disk_offering: "DO2n - 10 GiB" # <--- Replace with persistent disk offering name
-    #disk_offering: "custom_size_disk_offering2" # <--- Replace with persistent disk offering name
+    disk_offering: "Data disk" # <--- Replace with persistent disk offering name
 
 networks:
 - name: private
@@ -224,7 +212,7 @@ networks:
   - range: 10.0.0.128/26
     gateway: 10.0.0.129 
     dns: [10.234.50.180,10.234.71.124]
-    cloud_properties: {name: "3112 - preprod - back"} # <--- Replace with Network name
+    cloud_properties: {name: "100mb-net"} # <--- Replace with Network name
 
 jobs:
 - name: bosh
@@ -232,7 +220,7 @@ jobs:
 
   templates:
   - {name: nats, release: bosh}
-  - {name: redis, release: bosh}
+  #- {name: redis, release: bosh}
   - {name: postgres, release: bosh}
   - {name: blobstore, release: bosh}
   - {name: director, release: bosh} 
@@ -286,19 +274,15 @@ jobs:
       resurrector_enabled: true                       
                                                       
     dns:                                              
-      address: *micro_bosh_static_ip                           
-      #the bosh powerDNS will contact the following DNS server for serving DNS entries from other domains                                                                                                                         
-      # i.e. elpaaso-dns.internal-qa.paas                                                                                                                                                                                         
-      recursor: 10.234.50.180
+      address: *micro_bosh_static_ipp                                                                                                                                                                      recursor: 10.234.50.180
       db: *db
 
     cloudstack:  &cloudstack # <--- Replace values below
       endpoint: http://10.x.x.x:8080/client/api
       api_key: <cloudstack api key>
       secret_access_key: <cloudstack acces key>
-    
-      default_key_name: xx
-      private_key: zz
+      default_key_name: bosh-keypair  #<-- set ssh keypair name
+      private_key: zz #<-- unused
       state_timeout: 600
       state_timeout_volume: 600
       stemcell_public_visibility: true
@@ -307,16 +291,14 @@ jobs:
       proxy_port: 8080                                                                                           
       proxy_user: xx                                                                                         
       proxy_password: ""   
-      
     cpi:
-      default_disk_offering: "DO2n - 10 GiB" 
-      default_ephemeral_disk_offering: "DO1 - Small STD"  
-    
+      default_disk_offering: "Data disk" 
+      default_ephemeral_disk_offering: "Data disk"  
       webdav_host: *micro_bosh_static_ip
       webdav_port: 8080
       webdav_directory: "/var/vcap/store/cloudstack_cpi/webdav"
       registry:
-        endpoint: http://<micro_bosh_ip>:8080
+        endpoint: http://admin:admin@<micro_bosh_ip>:8080
         user: admin
         password: admin
       blobstore:
@@ -327,9 +309,7 @@ jobs:
       agent: 
         mbus: "nats://nats:nats-password@<micro_bosh_ip>:4222"     
       ntp: ""
-
     agent: {mbus: "nats://nats:nats-password@<micro_bosh_ip>:4222"}
-
     ntp: &ntp [10.234.50.245 ,10.234.50.246]
 
 cloud_provider:
@@ -342,11 +322,8 @@ cloud_provider:
     cpi:
       webdav_host: <inception_vm_ip>
       webdav_port: 8080
-  
-      default_disk_offering: "DOXn"  # <-- default offering must be shared. custom size
-
-      default_ephemeral_disk_offering: "DO1 - Small STD"  
-
+      default_disk_offering: "Data disk"  # <-- default offering must be shared. custom size
+      default_ephemeral_disk_offering: "Data disk"  
       registry:
         endpoint: http://<inception_vm_ip>:8080
         user: admin
@@ -354,7 +331,6 @@ cloud_provider:
       agent:
         mbus: "https://mbus:mbus-password@0.0.0.0:6868" 
       ntp: ""
-
     agent: {mbus: "https://mbus:mbus-password@0.0.0.0:6868"}
     blobstore: {provider: local, path: /var/vcap/micro_bosh/data/cache}
     ntp: *ntp
@@ -363,7 +339,13 @@ cloud_provider:
 ```
 
 
+## cloudstack stemcell
 
+A cloudstack xen stemcell is under development, following bosh official stemcells. Will soon prepare a PR to bosh project.
+
+<!-- source of the diag into stemcell_sequence.txt -->
+
+![Alt text](http://plantuml.com:80/plantuml/png/ZLIxRiCm39ohho3IELEt82xQpjq2j6CWowojLfO4FOBqxqk_Oyj9ayK3xwYx8nd8pHasmcXXelEuOG-Mko25j5m7-3Ov0zG548e1WnRy-dc03ruw0cpWyLsMLNXJ4UTC7x0MgDGnZr8LwEPLKJbZmjIwxtnuMhnllAnvYTH4_23Xkz_gEuBhGXOyZE27QtgQQjy9KdUb35NC5pfouwkZGuNS8tsjkP3Uymf3VTtn2bSrAHqxp2AA8VgXkWmbvb67sBwwwDnNfB-KasLmweO3rfcJzD9eBNK9a6MCqK1X-vnCPpToecLS17cY8DCPjlJzDabZ1mw3atZ2rYruCYJG___Qg90Qr2OWQ_NtKxyj6CyeWAn3YHeT3zI4s5CaQoou4DeXcmwC9JZYpbTl1pRcIf8tuw4jJ34jbhIrC7I4SItlS3EIBYqbslRRHDjeQXItvgWxkXr8xGEdLr8d_LdU8dDhrIyf9PvV1Luzo2d2APC1lB9poJtFOgN5QVQb2NKje1iYxijgyNSnQV-IcgjRkiSjeFjzeQkCjVe3)
 
 
 ## Contributing

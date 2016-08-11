@@ -9,6 +9,9 @@ cloudstack:
   state_timeout: <%= p('cloudstack.state_timeout') %>
   state_timeout_volume: <%= p('cloudstack.state_timeout_volume') %>
   stemcell_public_visibility: <%= p('cloudstack.stemcell_public_visibility') %>
+  stemcell_publish_timeout: <%= p('cloudstack.stemcell_publish_timeout') %> 
+  stemcell_requires_hvm: <%= p('cloudstack.stemcell_requires_hvm') %>
+  stemcell_os_type: <%= p('cloudstack.stemcell_os_type') %> 
   default_zone: <%= p('cloudstack.default_zone') %>
   proxy_host: <%= p('cloudstack.proxy_host') %>
   proxy_port: <%= p('cloudstack.proxy_port') %>
@@ -19,9 +22,19 @@ cpi:
   webdav_host: <%= p('cpi.webdav_host') %>
   webdav_port: <%= p('cpi.webdav_port') %>
   webdav_directory: <%= p('cpi.webdav_directory') %>
+  core:
+    user: <%= p('cpi.core.user') %>
+    password: <%= p('cpi.core.password') %>
+    
   default_disk_offering: <%= p('cpi.default_disk_offering') %>    
   default_ephemeral_disk_offering: <%= p('cpi.default_ephemeral_disk_offering') %>
+  vm_create_delay: <%= p('cpi.vm_create_delay') %>  
   vm_expunge_delay: <%= p('cpi.vm_expunge_delay') %>
+  force_expunge: <%= p('cpi.force_expunge') %> 
+  use_dhcp: <%= p('cpi.use_dhcp') %>
+  lightstemcell:
+    network_name: <%= p('cpi.lightstemcell.network_name') %>
+    instance_type: <%= p('cpi.lightstemcell.instance_type') %>
 
   registry:
     endpoint: <%= p('cpi.registry.endpoint') %>
@@ -44,7 +57,13 @@ cpi:
 logging:
   level: DEBUG
 
+management:
+  context-path: /admin    
+
+
 spring:
+  application:
+    name: cloudstack-cpi
   main:
     show-banner: false
   datasource:
@@ -52,6 +71,16 @@ spring:
   jpa:
     hibernate:
       ddl-auto: none
+  cache:
+    ehcache:
+      config: ehcache.xml
+  sleuth:
+    sampler:
+      percentage: <%= p('cpi.zipkin.sampler-percentage') %>
+  zipkin:
+    enabled: <%= p('cpi.zipkin.enabled') %>
+    base-url: <%= p('cpi.zipkin.base-url') %> 
+      
 
 
 pidfile: /var/vcap/sys/run/cloudstack_cpi/cpi.pid

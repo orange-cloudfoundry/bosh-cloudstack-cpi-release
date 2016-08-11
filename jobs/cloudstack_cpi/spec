@@ -24,10 +24,10 @@ properties:
       cloudstack api secret
   cloudstack.default_key_name:
     description:
-      key name for ssh access (unused)
+      key name for ssh access. must be present in cloudstack. cpi+bosh agent will provision the public key for vcap user
   cloudstack.private_key:
     description:
-      private key for ssh access (unused)
+      private key for ssh access. (unused)
   cloudstack.state_timeout:
     description:
       cloudstack api timeout
@@ -38,8 +38,21 @@ properties:
     default: 1200
   cloudstack.stemcell_public_visibility:
     description:
-      must stemcell template be public ?
+      must stemcell template be public ?  (unused)
     default: true
+  cloudstack.stemcell_requires_hvm:
+    description:
+      must stemcell template be published with requires hvm flag
+    default: false
+      
+  cloudstack.stemcell_os_type:
+    description:
+      os type to use when publishing stemcell as cloudstack template.
+    default: "Other PV (64-bit)"
+  cloudstack.stemcell_publish_timeout:
+    description:
+      timeout in minutes before consider stemcell push to cloud is ko
+    default: 5
   cloudstack.default_zone:
     description:
       CloudStack Iaas ZONE to use
@@ -68,7 +81,16 @@ properties:
   cpi.port:
     description:
       port the cpi core rest server is listening on
-    default : 8080      
+    default : 8080
+  cpi.core.user:
+    description:
+      user for core rest API
+    default : cpi
+  cpi.core.password:
+    description:
+      password for core rest API
+    default: cpi
+          
   cpi.webdav_host:
     description:
       webdav server to offer template to cloudstack api. Should be set to bosh server ip address
@@ -84,24 +106,31 @@ properties:
     
   cpi.default_disk_offering:
     description:
-      default disk offering to use if not specified (ie not disk_pool, just persistent tag
+      default disk offering to use if not specified (ie not disk_pool, just persistent tag)
     
   cpi.default_ephemeral_disk_offering:
     description:
-      default disk offering to use if not specified (ie not disk_pool, just persistent tag
+      default disk offering to use if not specified (ie not disk_pool, just persistent tag)
+
+  cpi.vm_create_delay:
+    description:
+      delay (in seconds) the cpi will wait after vm creation. To tune e.g. in case of xentools discovery delay
+    default: 10
   
   cpi.vm_expunge_delay:
     description:
-      delay (in seconds) the cpi will wait after vm deletion. Should match cloudstack expunge delay to prevent ip reuse conflicts
+      delay (in seconds) the cpi will wait after vm deletion. Should match cloudstack expunge delay to prevent ip reuse conflicts if force_expunge not set
     default: 30
   
-  
-  
+  cpi.force_expunge:
+    description:
+      explicitly force vm expunge with cloudstack api. expunge follows delete api calls, should not require cloudstack admin rights
+    default: false
   
   cpi.registry.endpoint:
     description:
       host the bosh registry is listening on. must be the IP of the director to be reached from bosh agents
-    default : http://127.0.0.1:8080
+    example: http://admin:admin@<bosh_director_ip>:8080
   cpi.registry.user:
     description:
       user for bosh registry
@@ -145,7 +174,40 @@ properties:
     description:
       "ntp server list (same as director) eg : [10.234.50.245 ,10.234.50.246]"
 
+  cpi.use_dhcp:
+    description:
+      "should the cpi tell bosh-agent to configure vm network with dhcp. default is false - static configuration"
+    default: false
   cpi.agent.mbus:
     description:
       "director nats url eg : nats://nats:nats-password@10.234.228.157:4222 "  
+
+
+  cpi.lightstemcell.network_name:
+    description:
+      "network to use when creating new template from existing template for light stemcell"
+    
+  cpi.lightstemcell.instance_type:
+    description:
+      "instance type to use when creating new template from existing template for light stemcell"
+
+  cpi.zipkin.enabled:
+    description:
+      "should cpi activate zipkin sleuth http tracing"
+    default: false
+
+  cpi.zipkin.sampler-percentage:
+    description:
+      "zipkin sleuth percentage sampling. 1.0 is all, 0.1 is one tenth"
+    default: 0.1
+
+  cpi.zipkin.base-url:
+    description:
+      "remote zipkin collecter server url"
+    example:  http://xx.xx.xx
+    default: http://127.0.0.1:9441
+       
+      
+      
+      
     
