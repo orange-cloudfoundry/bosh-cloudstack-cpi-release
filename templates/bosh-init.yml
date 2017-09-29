@@ -105,7 +105,7 @@ jobs:
       db: *db                                                                                            
 
   cloudstack:  &cloudstack # <--- Replace values below
-    endpoint: http://csm05.preprod.cloud.s0.p.fti.net:8080/client/api
+    endpoint: http://my.cloudstack.manager.com/client/api
     api_key: TKVNrMEIx2lHMjwavyb2Y68c7D3FP1xzQ54Fnvdlzt8ZNKe2Bcf9qF8_-VGSQ_-0qVuXXJ2KiNcMxQPbWWB93Q
     secret_access_key: zz
     default_key_name: zzzzz
@@ -116,7 +116,7 @@ jobs:
     default_zone: SPH-PP-NEON
     proxy_host: 10.98.253.30
     proxy_port: 8080
-    proxy_user: poblin
+    proxy_user: username
     proxy_password: "xxxxx"
 
     agent: {mbus: "nats://nats:nats-password@10.203.6.105:4222"}
