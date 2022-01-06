@@ -2,6 +2,8 @@
 
 [![Dependency Status](https://www.versioneye.com/user/projects/5721c9effcd19a00415b2a18/badge.svg?style=flat)](https://www.versioneye.com/user/projects/5721c9effcd19a00415b2a18)
 
+**This repo is deprecated**, please refer to https://github.com/orange-cloudfoundry/bosh-go-cpi-cloudstack and https://github.com/orange-cloudfoundry/bosh-cpi-cloudstack
+
 # bosh-cloudstack-cpi-release
 
 This is now quite a stable CPI. Feedbacks welcome (use issues).
